@@ -191,14 +191,13 @@ namespace GraphDZ3
             DialogResult res = form.ShowDialog();
 
             if (res == DialogResult.OK) {
+                double len = Math.Sqrt(l_x * l_x + l_y * l_y);
                 Point A = l.A;
                 l.A.X -= A.X; l.A.Y -= A.Y;
                 l.B.X -= A.X; l.B.Y -= A.Y;
 
-                l.A.X = (int)(l.A.X * Math.Cos(phi) - l.A.Y * Math.Sin(phi));
-                l.A.Y = (int)(l.A.Y * Math.Cos(phi) + l.A.X * Math.Sin(phi));
-                l.B.X = (int)(l.B.X * Math.Cos(phi) - l.B.Y * Math.Sin(phi));
-                l.B.Y = (int)(l.B.Y * Math.Cos(phi) + l.B.X * Math.Sin(phi));
+                l.B.X = (int)(len*Math.Cos(form.phi));
+                l.B.Y = (int)(len*Math.Sin(form.phi));
 
                 l.A.X += A.X; l.A.Y += A.Y;
                 l.B.X += A.X; l.B.Y += A.Y;

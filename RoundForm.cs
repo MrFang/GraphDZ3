@@ -12,7 +12,7 @@ namespace GraphDZ3
 {
     public partial class RoundForm : Form
     {
-        double phi;
+        public double phi;
         public RoundForm()
         {
             InitializeComponent();
