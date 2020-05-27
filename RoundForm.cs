@@ -12,18 +12,10 @@ namespace GraphDZ3
 {
     public partial class RoundForm : Form
     {
-        public double phi;
+        public double phi = 0;
         public RoundForm()
         {
             InitializeComponent();
-        }
-
-        public RoundForm(double phi) {
-            InitializeComponent();
-            this.phi = phi;
-            SuspendLayout();
-            angleBox.Text = phi.ToString("0.##");
-            ResumeLayout();
         }
 
         private void OKButton_Click(object sender, EventArgs e)

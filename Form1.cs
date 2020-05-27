@@ -8,18 +8,22 @@ namespace GraphDZ3
     public partial class Form1 : Form
     {
         private readonly List<Line> lines = new List<Line>();
-        private int selectedLineIdx = -1;
+        private List<int> selectedLinesIdx = new List<int>();
         private Point lastCursorCoordinates;
         private bool isMouseDown = false;
-        readonly ContextMenu menu = new ContextMenu();
+        readonly ContextMenu singleLineMenu = new ContextMenu();
+        readonly ContextMenu groupMenu = new ContextMenu();
 
         public Form1()
         {
             InitializeComponent();
 
-            menu.MenuItems.Add(new MenuItem("Round", RoundLine));
-            menu.MenuItems.Add(new MenuItem("Resize", ResizeLine));
-            menu.MenuItems.Add(new MenuItem("Delete", DeleteLine));
+            singleLineMenu.MenuItems.Add(new MenuItem("Round", RoundLines));
+            singleLineMenu.MenuItems.Add(new MenuItem("Resize", ResizeLine));
+            singleLineMenu.MenuItems.Add(new MenuItem("Delete", DeleteLines));
+
+            groupMenu.MenuItems.Add(new MenuItem("Round", RoundLines));
+            groupMenu.MenuItems.Add(new MenuItem("Delete", DeleteLines));
         }
 
         protected override void OnPaint(PaintEventArgs e)
@@ -28,7 +32,7 @@ namespace GraphDZ3
             for (int i = 0; i < lines.Count; i++)
             {
                 Line l = lines[i];
-                Pen p = new Pen(l.color, i == selectedLineIdx ? 3 : 1);
+                Pen p = new Pen(l.color, selectedLinesIdx.Contains(i) ? 3 : 1);
                 e.Graphics.DrawLine(p, l.A, l.B);
             }
         }
@@ -50,9 +54,28 @@ namespace GraphDZ3
             bool selected = false;
             for (int i = 0; i < lines.Count; i++)
             {
+
                 if (IsOnLine(lines[i], e.Location)) {
-                    selectedLineIdx = i;
                     selected = true;
+                    if (isShiftPressed())
+                    {
+                        if (selectedLinesIdx.Contains(i))
+                        {
+                            selectedLinesIdx.Remove(i);
+                        }
+                        else
+                        {
+                            selectedLinesIdx.Add(i);
+                            selected = true;
+                        }
+                    }
+                    else
+                    {
+                        if (!selectedLinesIdx.Contains(i)) {
+                            selectedLinesIdx.Clear();
+                            selectedLinesIdx.Add(i);
+                        }
+                    }
                 }
             }
 
@@ -64,7 +87,13 @@ namespace GraphDZ3
             if (selected && e.Button == MouseButtons.Right)
             {
                 isMouseDown = false;
-                menu.Show(this, e.Location);
+                if (selectedLinesIdx.Count > 1)
+                {
+                    groupMenu.Show(this, e.Location);
+                }
+                else {
+                    singleLineMenu.Show(this, e.Location);
+                }
             }
 
             /**
@@ -72,7 +101,7 @@ namespace GraphDZ3
              */
             if (!selected)
             {
-                selectedLineIdx = -1;
+                selectedLinesIdx.Clear();
             }
         }
 
@@ -86,22 +115,35 @@ namespace GraphDZ3
             /**
              * Если кнопка мыши нажата перемещаем выделенный объект
              */
-            if (selectedLineIdx != -1 && isMouseDown)
+            if (selectedLinesIdx.Count != 0 && isMouseDown)
             {
-                Line l = lines[selectedLineIdx];
                 int dx = e.Location.X - lastCursorCoordinates.X;
                 int dy = e.Location.Y - lastCursorCoordinates.Y;
-                l.A.X += dx; l.B.X += dx;
-                l.A.Y += dy; l.B.Y += dy;
+
+                foreach (int i in selectedLinesIdx)
+                {
+                    Line l = lines[i];
+                    l.A.X += dx; l.B.X += dx;
+                    l.A.Y += dy; l.B.Y += dy;
+                }
+
                 lastCursorCoordinates = e.Location;
 
                 Invalidate();
             }
         }
 
-        private void DeleteLine (object sender, EventArgs e) {
-            lines.RemoveAt(selectedLineIdx);
-            selectedLineIdx = -1;
+        private void DeleteLines (object sender, EventArgs e) {
+            // Нужно удалять индексы начиная с конца списка, чтобы не было смещения
+            selectedLinesIdx.Sort();
+            selectedLinesIdx.Reverse();
+
+            foreach (int i in selectedLinesIdx)
+            {
+                lines.RemoveAt(i);
+            }
+
+            selectedLinesIdx.Clear();
             Invalidate();
         }
 
@@ -134,7 +176,7 @@ namespace GraphDZ3
         }
 
         private void ResizeLine(object sender, EventArgs e) {
-            Line l = lines[selectedLineIdx];
+            Line l = lines[selectedLinesIdx[0]];
             double l_x = l.B.X - l.A.X;
             double l_y = l.B.Y - l.A.Y;
             double len = Math.Sqrt(l_x * l_x + l_y * l_y);
@@ -152,58 +194,48 @@ namespace GraphDZ3
             Invalidate();
         }
 
-        private void RoundLine(object sender, EventArgs e) {
-            Line l = lines[selectedLineIdx];
-            double l_x = l.B.X - l.A.X;
-            double l_y = l.B.Y - l.A.Y;
-            double phi;
-
-            if (l_x == 0 && l_y > 0)
-            {
-                phi = Math.PI / 2;
-            }
-            else if (l_x == 0 && l_y < 0)
-            {
-                phi = 3 * Math.PI / 2;
-            }
-            else if (l_x > 0 && l_y == 0)
-            {
-                phi = 0;
-            }
-            else if (l_x < 0 && l_y == 0)
-            {
-                phi = Math.PI;
-            }
-            else if (l_x > 0 && l_y > 0)
-            {
-                phi = Math.Atan(l_y / l_x);
-            }
-            else if ((l_x < 0 && l_y > 0) || (l_x < 0 && l_y < 0))
-            {
-                phi = Math.PI + Math.Atan(l_y / l_x);
-            }
-            else
-            {
-                phi = 2 * Math.PI + Math.Atan(l_y / l_x);
+        private void RoundLines(object sender, EventArgs e) {
+            Point center = new Point(0, 0);
+            foreach (int i in selectedLinesIdx) {
+                Line l = lines[i];
+                center.X += l.A.X + l.B.X;
+                center.Y += l.A.Y + l.B.Y;
             }
 
-            RoundForm form = new RoundForm(phi);
+            center.X /= 2 * selectedLinesIdx.Count;
+            center.Y /= 2 * selectedLinesIdx.Count;
+
+            RoundForm form = new RoundForm();
             DialogResult res = form.ShowDialog();
 
             if (res == DialogResult.OK) {
-                double len = Math.Sqrt(l_x * l_x + l_y * l_y);
-                Point A = l.A;
-                l.A.X -= A.X; l.A.Y -= A.Y;
-                l.B.X -= A.X; l.B.Y -= A.Y;
+                double phi = form.phi;
 
-                l.B.X = (int)(len*Math.Cos(form.phi));
-                l.B.Y = (int)(len*Math.Sin(form.phi));
+                foreach (int i in selectedLinesIdx) {
+                    Line l = lines[i];
+                    l.A.X -= center.X; l.A.Y -= center.Y;
+                    l.B.X -= center.X; l.B.Y -= center.Y;
 
-                l.A.X += A.X; l.A.Y += A.Y;
-                l.B.X += A.X; l.B.Y += A.Y;
+                    Point A = new Point();
+                    Point B = new Point();
+
+                    A.X = (int)(l.A.X * Math.Cos(phi) + l.A.Y * Math.Sin(phi));
+                    A.Y = (int)(-l.A.X * Math.Sin(phi) + l.A.Y * Math.Cos(phi));
+                    B.X = (int)(l.B.X * Math.Cos(phi) + l.B.Y * Math.Sin(phi));
+                    B.Y = (int)(-l.B.X * Math.Sin(phi) + l.B.Y * Math.Cos(phi));
+
+                    l.A = A; l.B = B;
+
+                    l.A.X += center.X; l.A.Y += center.Y;
+                    l.B.X += center.X; l.B.Y += center.Y;
+                }
             }
 
             Invalidate();
+        }
+
+        private bool isShiftPressed() {
+            return (ModifierKeys & Keys.Shift) != 0;
         }
     }
 }

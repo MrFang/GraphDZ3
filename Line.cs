@@ -15,7 +15,7 @@ namespace GraphDZ3
         
         public Line() {
             A = new Point(100, 100);
-            B = new Point(300, 300);
+            B = new Point(100, 300);
             color = Color.Black;
         }
     }
